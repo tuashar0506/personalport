@@ -1,91 +1,807 @@
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { Check, Code2, Copy, Download, ExternalLink, Fingerprint, Github, Globe2, GraduationCap, LockKeyhole, Mail, Menu, Network, Radar, ShieldCheck, TerminalSquare, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { profile, projects, skillGroups, tools } from '@/data/portfolio';
-import avatar from '@/assets/avatar.jpg';
-import './App.css';
-import PortfolioTerminal from '@/components/PortfolioTerminal';
-import HackerEffects from '@/components/HackerEffects';
-import './Hacker.css';
-
-const nav = [['about', 'About'], ['work', 'Selected work'], ['expertise', 'Expertise'], ['terminal', 'Terminal'], ['contact', 'Contact']];
-const categories = [['all', 'All projects'], ['defense', 'Defense'], ['offense', 'Offense'], ['dev', 'Development']];
-const caseDetails = [
-  { goal: 'Make suspicious network activity easier to recognize.', approach: 'A Python-based project exploring network traffic monitoring and intrusion detection. The focus is on understanding what defenders can observe and how those observations become useful alerts.', lessons: ['Traffic visibility and detection logic', 'Readable alerts and investigation context', 'The balance between useful signals and noisy detections'], icon: ShieldCheck, code: 'monitor.network()\n  capture → inspect → flag\n  event: suspicious_activity' },
-  { goal: 'Understand reconnaissance from the socket up.', approach: 'A custom Python port scanner built for reconnaissance practice. Writing the scanner provides a closer look at network connections, service exposure, and the foundations behind familiar scanning tools.', lessons: ['Python socket programming', 'Port and service discovery', 'Keeping reconnaissance within an authorized scope'], icon: Radar, code: 'scan.authorized_lab()\n  connect → discover → report\n  scope: permission_required' },
-  { goal: 'Build a healthcare application with security in mind.', approach: 'A full-stack healthcare platform for Nepal, combining appointment booking and medicine management with JWT authentication and role-based access control.', lessons: ['Authentication and authorization boundaries', 'React, Node.js, and MySQL integration', 'Separating user roles and application responsibilities'], icon: Code2, code: 'request.authenticate()\n  identity → role → resource\n  access: policy_checked' },
-  { goal: 'Understand the systems beneath the applications.', approach: 'Operating systems coursework in C, covering process scheduling and memory management. A foundation for reasoning about how applications interact with the systems they run on.', lessons: ['Process scheduling concepts', 'Memory management fundamentals', 'Low-level reasoning with C'], icon: TerminalSquare, code: 'system.schedule()\n  process → memory → execution\n  language: C' },
-];
-const services = [
-  { icon: Code2, title: 'Security-minded development', text: 'Small web applications and Python utilities, with attention to authentication, access control, and maintainable code.', tags: 'WEB APPS / PYTHON / AUTOMATION' },
-  { icon: Radar, title: 'Lab & security collaboration', text: 'Collaborative security labs, scoped reconnaissance practice, and vulnerability-assessment projects in authorized environments.', tags: 'LABS / RESEARCH / DOCUMENTATION' },
-  { icon: Network, title: 'Network & tooling projects', text: 'Network learning environments, packet-analysis exercises, and custom tools that make technical work easier to understand.', tags: 'NETWORKS / LINUX / TOOLING' },
-];
-const notes = [
-  { title: 'An open port is a starting point.', category: 'RECONNAISSANCE', read: '2 MIN READ', body: ['An open port tells you that a service is listening. It does not, by itself, prove that the service is vulnerable.', 'For an authorized assessment, record the asset, the observed service, and the limits of your evidence. Check whether exposure is expected before drawing conclusions.', 'A useful finding connects observation to impact and a practical recommendation. A list of ports is an inventory; a well-supported explanation is what helps someone make a decision.'], takeaway: 'Separate what you observed from what you inferred.' },
-  { title: 'Authentication is only half the story.', category: 'SECURE DEVELOPMENT', read: '2 MIN READ', body: ['Authentication establishes identity. Authorization decides what that identity may do. An application needs both.', 'A signed-in user should not automatically have access to every record. Enforce permissions on the server for each protected action and resource, rather than relying on hidden buttons in the interface.', 'When reviewing an application, think in roles and ownership: who should create, read, update, or delete this resource? Use controlled test accounts to check those boundaries.'], takeaway: 'Check permission at the resource boundary.' },
-  { title: 'Good evidence makes a better report.', category: 'SECURITY PRACTICE', read: '2 MIN READ', body: ['A useful security report should help another person understand and reproduce an observation within an agreed scope.', 'Record the environment, relevant steps, and expected versus observed behavior. Keep sensitive information out of screenshots and attach only the evidence needed to support the finding.', 'Describe the limitations of the assessment, explain potential impact without exaggeration, and suggest a practical next step. Clear documentation is part of the technical work.'], takeaway: 'Make findings understandable, reproducible, and actionable.' },
-];
-type Repo = { name: string; html_url: string; language: string | null; pushed_at: string };
-function SectionTitle({ number, label, title, description }: { number: string; label: string; title: string; description?: string }) { return <div className="section-heading"><div><p className="eyebrow"><span>{number}</span> / {label}</p><h2>{title}</h2></div>{description && <p>{description}</p>}</div>; }
-function App() {
-  const [menu, setMenu] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const [detail, setDetail] = useState<number | null>(null);
-  const [note, setNote] = useState<number | null>(null);
-  const [terminalOpen, setTerminalOpen] = useState(false);
-  const [active, setActive] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [repos, setRepos] = useState<Repo[]>([]);
-  const [githubState, setGithubState] = useState<'loading' | 'live' | 'offline'>('loading');
-  const [service, setService] = useState('Web development');
-  const [draft, setDraft] = useState('');
-  const [briefCopied, setBriefCopied] = useState(false);
-  const [motion, setMotion] = useState(() => { try { return localStorage.getItem('cyberfolio-motion') !== 'off' && !matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } });
-  useEffect(() => { document.documentElement.dataset.motion = motion ? 'on' : 'off'; try { localStorage.setItem('cyberfolio-motion', motion ? 'on' : 'off'); } catch { /* preference is optional */ } }, [motion]);
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 8000);
-    fetch('https://api.github.com/users/tuashar0506/repos?sort=pushed&per_page=6', { signal: controller.signal }).then(r => { if (!r.ok) throw new Error('Unavailable'); return r.json(); }).then((data: Repo[]) => { if (!Array.isArray(data)) throw new Error('Invalid'); setRepos(data.filter(r => r.html_url.startsWith('https://github.com/tuashar0506/'))); setGithubState('live'); }).catch(() => setGithubState('offline')).finally(() => clearTimeout(timeout));
-    return () => { clearTimeout(timeout); controller.abort(); };
-  }, []);
-  useEffect(() => { const handler = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setTerminalOpen(o => !o); } }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler); }, []);
-  useEffect(() => { const observer = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); }), { rootMargin: '-15% 0px -55% 0px' }); document.querySelectorAll('main section[id]').forEach(el => observer.observe(el)); return () => observer.disconnect(); }, []);
-  async function copyEmail() { try { await navigator.clipboard.writeText(profile.email); setCopied(true); setTimeout(() => setCopied(false), 2500); } catch { setCopied(false); window.location.href = 'mailto:' + profile.email; } }
-  function createBrief(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const f = new FormData(e.currentTarget); setDraft(`Hi Tushar,\n\nI'm ${f.get('name')}. I'd like to discuss a ${service.toLowerCase()} project.\n\nProject details:\n${f.get('message')}\n\nTimeline: ${f.get('timeline') || 'To be discussed'}\nReply email: ${f.get('email')}\n\nThanks,\n${f.get('name')}`); setBriefCopied(false); }
-  function downloadBrief() { const url = URL.createObjectURL(new Blob([draft], { type: 'text/plain' })); const a = document.createElement('a'); a.href = url; a.download = 'project-brief.txt'; a.click(); URL.revokeObjectURL(url); }
-  return <>
-    <HackerEffects motion={motion} /><a className="skip-link" href="#main">Skip to content</a>
-    <header className="site-header"><a className="brand" href="#home" aria-label="Tushar Pradhan home"><span className="brand-mark">t<span>p</span><i /></span><span>TUSHAR<span className="brand-dot">.</span></span></a><nav className={menu ? 'nav open' : 'nav'} aria-label="Main navigation">{nav.map(([id, label]) => <a key={id} className={active === id ? 'active' : ''} href={'#' + id} onClick={() => setMenu(false)}>{label}</a>)}</nav><div className="header-actions"><button className="terminal-toggle" onClick={() => setTerminalOpen(true)} aria-label="Open interactive terminal"><TerminalSquare size={17} /><kbd>⌘ K</kbd></button><a className="button header-cta" href="#contact">Let’s talk <span className="button-dot" /></a><button className="menu-toggle" aria-label={menu ? 'Close menu' : 'Open menu'} aria-expanded={menu} onClick={() => setMenu(!menu)}>{menu ? <X /> : <Menu />}</button></div></header>
-    <main id="main">
-      <section className="hero" id="home"><div className="hero-grid" aria-hidden="true" /><div className="hero-topline"><span>TUSHAR_OS / CYBERPUNK EDITION</span><span><Globe2 size={13} /> BASED IN NEPAL · WORKING BEYOND BORDERS</span></div><div className="hero-layout"><div className="hero-copy"><p className="hero-kicker"><span /> ETHICAL HACKER. BUILDER. CURIOUS MIND.</p><div className="hero-command"><span>guest@tushar:~$</span> ./explore_portfolio<span className="typing-caret">▊</span></div><h1>Think like an<br /><span className="outline-word">attacker.</span><br /><span className="gradient-text">Build to defend.</span></h1><p className="hero-description">I’m <strong>Tushar Pradhan</strong> — a cybersecurity student exploring how systems break and building with security in mind.</p><div className="hero-buttons"><a className="button primary" href="#work">Explore my work <Code2 size={18} /></a><button className="button secondary" onClick={() => setTerminalOpen(true)}><TerminalSquare size={18} /> Launch terminal</button></div><div className="hero-footnote"><ShieldCheck size={17} /><span>Curiosity without compromise. Always ethical.</span></div><div className="hero-console-footer"><span><b>ROLE</b> ethical hacking student</span><span><b>MODE</b> build + defend</span></div></div><div className="hero-visual"><div className="portrait-frame"><img src={avatar} alt="Hooded cyberpunk character illustration" fetchPriority="high" /><div className="portrait-overlay" /><div className="portrait-top"><span className="crosshair">+</span><span>IDENTITY_001</span><Fingerprint size={26} /></div><div className="portrait-caption"><span>THE MIND BEHIND THE TERMINAL</span><strong>TUSHAR<br />PRADHAN<span>_</span></strong><div><span>UTC +05:45</span><span>NEPAL</span></div></div></div><div className="identity-tag"><ShieldCheck size={19} /><div><span>ETHICAL BY DESIGN</span><strong>Permission. Purpose. Progress.</strong></div></div><div className="side-label">OFFENSIVE THINKING / DEFENSIVE PURPOSE</div></div></div><div className="hero-bottom"><span>SCROLL TO EXPLORE <span className="scroll-line" /></span><div><span>01 — RESEARCH</span><span>02 — BUILD</span><span>03 — SECURE</span></div><span className="hero-year">[ TP / 2026 ]</span></div></section>
-      <div className="technology-strip" aria-label="Core technologies"><span>INSIDE MY TOOLKIT</span>{['PYTHON', 'KALI LINUX', 'BURP SUITE', 'WIRESHARK', 'NMAP', 'REACT'].map(t => <span key={t}><i />{t}</span>)}</div>
-      <section id="about" className="section about-section"><SectionTitle number="01" label="BEHIND THE HANDLE" title="A curious mind. A clear purpose." /><div className="about-grid"><div className="about-copy"><p className="large-copy">Learning how to break things.<br /><span>To understand how to protect them.</span></p><p>I’m studying Ethical Hacking and Cybersecurity at Softwarica College of IT and E-Commerce. My work lives at the intersection of offensive security, network defense, and software development.</p><p>I learn by doing: building tools, working through labs, and turning complex ideas into something I can test and explain. I’m interested in freelance projects where I can contribute, collaborate, and keep growing.</p><div className="about-facts"><div><span>BASED IN</span><strong>Nepal <Globe2 size={16} /></strong></div><div><span>FOCUS</span><strong>Security + development</strong></div><div><span>NEXT CHAPTER</span><strong>Practical collaborations</strong></div></div><a href={profile.github} target="_blank" rel="noreferrer" className="text-link"><Github size={18} /> Meet me on GitHub <ExternalLink size={14} /></a></div><div className="identity-console"><div className="console-title"><TerminalSquare size={17}/> cat /home/tushar/identity.json</div><pre>{`{
-  "name": "Tushar Pradhan",
-  "location": "Nepal",
-  "focus": [
-    "offensive security",
-    "secure development"
-  ],
-  "mindset": "always learning",
-  "ethics": "permission first"
-}`}</pre><a href="#terminal">Explore the interactive shell <span>+</span></a></div></div></section>
-      <section id="terminal" className="section terminal-section"><SectionTitle number="~/" label="GET YOUR HANDS ON THE KEYBOARD" title="Less clicking. More commands." description="Explore my world through a Linux-style shell. Browse files, read projects, filter text, and learn what each command does." /><div className="terminal-workspace"><div className="terminal-guide"><span className="shell-label">GUEST SESSION / TUSHAR_OS</span><h3>Your curiosity.<br/>The command line.</h3><p>A small virtual filesystem, a familiar prompt, and plenty to discover. Start with a command below.</p><div className="command-recipes">{[['01','Find your way','pwd · ls · cd · tree'],['02','Read the story','cat about.txt'],['03','Follow the evidence','cat skills.txt | grep Python'],['04','Learn a command','man grep']].map(([n,title,code])=><div key={n}><span>{n}</span><div><strong>{title}</strong><code>{code}</code></div></div>)}</div><p className="sandbox-note"><LockKeyhole size={15}/> Browser simulation. No system access or real network scans.</p></div><PortfolioTerminal onExpand={()=>setTerminalOpen(true)}/></div></section>
-      <section id="work" className="section work-section"><SectionTitle number="02" label="SELECTED WORK" title="Built to understand. Designed to matter." description="A selection of security tools and development projects from my hands-on learning journey." /><div className="work-toolbar"><div className="filter-group" aria-label="Filter projects">{categories.map(([key, label]) => <button key={key} aria-pressed={filter === key} onClick={() => setFilter(key)} className={filter === key ? 'selected' : ''}>{label}{key === 'all' && <span>04</span>}</button>)}</div><span className="mono muted">{String(projects.filter(p => filter === 'all' || p.category === filter).length).padStart(2, '0')} PROJECTS</span></div><div className="project-grid">{projects.map((project, i) => { const Icon = caseDetails[i].icon; return (filter === 'all' || project.category === filter) && <article className={'project-card project-' + i} key={project.name}><div className="project-visual"><div className="project-visual-top"><span>PROJECT / 00{i + 1}</span><span>{project.category === 'dev' ? 'DEVELOPMENT' : project.category.toUpperCase()}</span></div><div className="project-diagram"><div className="project-icon"><Icon size={42} strokeWidth={1.3} /></div><pre>{caseDetails[i].code}</pre></div><div className="visual-footer"><span>ENGINEERING STUDY</span><span>source.available</span></div></div><div className="project-info"><div className="project-title"><h3>{project.name.replace('_', ' ')}</h3><span>0{i + 1}</span></div><p>{project.description}</p><div className="tags">{project.tech.map(t => <span key={t}>{t}</span>)}</div><div className="project-actions"><button onClick={() => setDetail(i)}>Explore project <span>+</span></button><a href={project.repo} target="_blank" rel="noreferrer" aria-label={'View ' + project.name + ' on GitHub'}><Github size={18} /> Source</a></div></div></article>; })}</div></section>
-      <section id="services" className="section"><SectionTitle number="03" label="WAYS TO COLLABORATE" title="Let’s build something worthwhile." description="Focused, practical collaboration that matches my current skills. Every project starts with an honest conversation about scope." /><div className="service-grid">{services.map((s, i) => <article className="service-card" key={s.title}><div className="service-top"><s.icon size={27} /><span>0{i + 1}</span></div><h3>{s.title}</h3><p>{s.text}</p><span className="service-tags">{s.tags}</span><a href="#contact" onClick={() => setService(i === 0 ? 'Web development' : i === 1 ? 'Security lab collaboration' : 'Network & tooling')}>Discuss a project <span>+</span></a></article>)}</div><div className="scope-note"><LockKeyhole size={18} /><p>Security work starts with explicit permission and a clearly agreed scope. I’m a student building practical experience; suitability and deliverables are agreed before work begins.</p></div></section>
-      <section id="expertise" className="section expertise-section"><SectionTitle number="04" label="THE TOOLKIT" title="Tools change. Fundamentals stay." /><div className="expertise-grid"><div className="expertise-intro"><span className="big-symbol" aria-hidden="true">{ '{ / }' }</span><h3>Offensive thinking.<br />A builder’s mindset.</h3><p>Learning to connect how applications work, how networks communicate, and where security boundaries can fail.</p><span className="small-label">CONTINUOUSLY LEARNING / ALWAYS BUILDING</span></div><div className="skill-list">{skillGroups.map((g, i) => <div className="skill-row" key={g.label}><span className="skill-number">0{i + 1}</span><div><h3>{g.label}</h3><div className="tags">{g.items.map(t => <span key={t}>{t}</span>)}</div></div></div>)}</div></div><div className="tools-row"><span className="small-label">TOOLS I WORK WITH</span><div>{tools.map(t => <span key={t}>{t}</span>)}</div></div></section>
-      <section className="section journey-section" id="journey"><div className="journey-grid"><div><p className="eyebrow"><span>05</span> / LEARNING IN PUBLIC</p><h2>Still learning.<br /><span className="gradient-text">Always moving.</span></h2><div className="education-card"><GraduationCap size={24} /><div><span className="small-label">UNDERGRADUATE · IN PROGRESS</span><h3>BSc Ethical Hacking<br />and Cybersecurity</h3><p>Softwarica College of IT and E-Commerce</p><span className="education-topics">Offensive security · Digital forensics · Network defense</span></div></div><p className="journey-note">Working toward a career in penetration testing, one tool, lab, and lesson at a time.</p></div><div className="github-panel"><div className="github-heading"><Github size={23} /><div><h3>From the workbench</h3><span>@{profile.handle}</span></div><span className={'github-badge ' + githubState}>{githubState === 'live' ? 'GITHUB API' : githubState === 'loading' ? 'LOADING' : 'SELECTED REPOS'}</span></div><p>{githubState === 'live' ? 'Recently updated public repositories.' : githubState === 'loading' ? 'Checking for the latest public repositories…' : 'Live activity is unavailable. Explore the repositories featured in this portfolio.'}</p><div className="repo-list">{(githubState === 'live' ? repos : projects.map(p => ({ name: p.name, html_url: p.repo, language: p.tech[0], pushed_at: '' }))).slice(0, 4).map(repo => <a key={repo.name} href={repo.html_url} target="_blank" rel="noreferrer"><Code2 size={18} /><div><strong>{repo.name}</strong><span>{repo.language || 'Source code'}{repo.pushed_at ? ' · Updated ' + new Date(repo.pushed_at).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span></div><ExternalLink size={15} /></a>)}{githubState === 'live' && repos.length === 0 && <p>No public repositories returned. Visit GitHub for the full profile.</p>}</div><a className="text-link" href={profile.github} target="_blank" rel="noreferrer">Explore GitHub <ExternalLink size={14} /></a></div></div></section>
-      <section id="notes" className="section"><SectionTitle number="06" label="FIELD NOTES" title="Ideas worth keeping." description="Short explainers on security fundamentals, from reconnaissance to clearer reporting." /><div className="notes-grid">{notes.map((n, i) => <button className="note-card" key={n.title} onClick={() => setNote(i)}><div><span className="note-number">/0{i + 1}</span><span>{n.category}</span></div><h3>{n.title}</h3><p>{n.takeaway}</p><footer><span>{n.read}</span><span>Read note <span>+</span></span></footer></button>)}</div></section>
-      <section id="process" className="section process-section"><SectionTitle number="07" label="WORKING TOGETHER" title="Clear scope. Thoughtful execution." /><div className="process-grid">{[['Discover', 'Understand the problem, goals, and technical context.'], ['Define', 'Agree on scope, permissions, deliverables, and timeline.'], ['Build & review', 'Work in small steps, share progress, and review together.'], ['Hand over', 'Deliver the work with clear documentation and next steps.']].map(([title, text], i) => <div key={title}><span className="process-number">0{i + 1}</span><h3>{title}</h3><p>{text}</p></div>)}</div></section>
-      <section className="section faq-section"><div><p className="eyebrow"><span>08</span> / GOOD TO KNOW</p><h2>Before we<br />get started.</h2></div><Accordion type="single" collapsible className="faq-list"><AccordionItem value="projects"><AccordionTrigger>What kinds of projects can we discuss?</AccordionTrigger><AccordionContent>Small web applications, Python utilities, network learning projects, and authorized security-lab collaborations are a good starting point. We’ll discuss what you need and whether it fits my current skills before committing.</AccordionContent></AccordionItem><AccordionItem value="experience"><AccordionTrigger>Are you a professional penetration tester?</AccordionTrigger><AccordionContent>I’m currently an Ethical Hacking and Cybersecurity student building practical experience. My portfolio shows my learning and development projects. I don’t present myself as a certified auditor or offer formal security assurance.</AccordionContent></AccordionItem><AccordionItem value="scope"><AccordionTrigger>How do you approach security testing?</AccordionTrigger><AccordionContent>Only with explicit authorization and an agreed scope. We define the environment, permitted activities, reporting expectations, and boundaries before any testing begins.</AccordionContent></AccordionItem><AccordionItem value="start"><AccordionTrigger>What should I include in an inquiry?</AccordionTrigger><AccordionContent>A short description of the project, what you want to achieve, the current technology or environment, and your preferred timeline. Please don’t send credentials or sensitive data with the first message.</AccordionContent></AccordionItem></Accordion></section>
-      <section id="contact" className="section contact-section"><div className="contact-grid"><div><p className="eyebrow"><span>09</span> / OPEN A CHANNEL</p><h2>Have a challenge?<br /><span className="gradient-text">Let’s talk.</span></h2><p className="contact-intro">A project, a collaboration, or an interesting idea.<br />Start with a hello — let’s see what we can build.</p><a className="email-link" href={'mailto:' + profile.email}>{profile.email}</a><div className="contact-buttons"><button className="button secondary" onClick={copyEmail}>{copied ? <Check size={16} /> : <Copy size={16} />}{copied ? 'Email copied' : 'Copy email'}</button><a className="button secondary" href={profile.github} target="_blank" rel="noreferrer"><Github size={17} /> GitHub</a></div><div className="contact-location"><Globe2 size={17} /><span>Nepal · Open to remote collaboration</span></div></div><form className="contact-form" onSubmit={createBrief}><div className="form-header"><span>PROJECT INQUIRY</span><Mail size={18} /></div><div className="form-row"><label>Your name<input name="name" autoComplete="name" required placeholder="What should I call you?" maxLength={100} /></label><label>Email address<input name="email" type="email" autoComplete="email" required placeholder="you@example.com" maxLength={200} /></label></div><div className="form-row"><label>Project type<select value={service} onChange={e => setService(e.target.value)}><option>Web development</option><option>Python & automation</option><option>Security lab collaboration</option><option>Network & tooling</option><option>Other collaboration</option></select></label><label>Timeline <span className="optional">(optional)</span><input name="timeline" placeholder="e.g. Next month" maxLength={100} /></label></div><label>Tell me about your project<textarea name="message" required rows={4} minLength={15} maxLength={5000} placeholder="What are you building, and how can I help?" /></label><button className="button primary" type="submit">Prepare email <Mail size={17} /></button><p className="form-note">Prepares a message for your email app. Nothing is sent or stored here.</p>{draft && <div className="draft-result" role="status"><h3>Your inquiry is ready.</h3><p>Open your email app to review and send, or save the brief.</p><div><a className="button primary" href={'mailto:' + profile.email + '?subject=' + encodeURIComponent('Project inquiry: ' + service) + '&body=' + encodeURIComponent(draft)}>Open email app</a><button type="button" className="icon-button" aria-label="Copy project brief" onClick={async () => { try { await navigator.clipboard.writeText(draft); setBriefCopied(true); } catch { downloadBrief(); } }}>{briefCopied ? <Check size={18} /> : <Copy size={18} />}</button><button type="button" className="icon-button" onClick={downloadBrief} aria-label="Download project brief"><Download size={18} /></button></div><details><summary>Review message</summary><pre>{draft}</pre></details></div>}</form></div></section>
-    </main>
-    <footer className="site-footer"><div className="footer-top"><a className="brand" href="#home"><span className="brand-mark">tp<i /></span><span>TUSHAR.</span></a><p>Built with curiosity.<br /><span>Guided by ethics.</span></p><a className="back-top" href="#home">Back to top <span>↑</span></a></div><div className="footer-bottom"><span>© {new Date().getFullYear()} Tushar Pradhan</span><div><button onClick={() => setMotion(!motion)} aria-pressed={motion}>Motion: {motion ? 'on' : 'off'}</button><button onClick={() => setTerminalOpen(true)}>Launch terminal</button><span>NEPAL / NPT</span></div></div></footer>
-    <Dialog open={detail !== null} onOpenChange={open => { if (!open) setDetail(null); }}><DialogContent className="portfolio-dialog">{detail !== null && <><span className="eyebrow">PROJECT / 0{detail + 1}</span><DialogTitle>{projects[detail].name}</DialogTitle><DialogDescription>{caseDetails[detail].goal}</DialogDescription><div className="dialog-section"><h3>Project overview</h3><p>{caseDetails[detail].approach}</p></div><div className="dialog-section"><h3>Engineering focus</h3><ul>{caseDetails[detail].lessons.map(l => <li key={l}>{l}</li>)}</ul></div><div className="tags">{projects[detail].tech.map(t => <span key={t}>{t}</span>)}</div><a className="button primary" href={projects[detail].repo} target="_blank" rel="noreferrer"><Github size={18} /> Explore the repository</a></>}</DialogContent></Dialog>
-    <Dialog open={note !== null} onOpenChange={open => { if (!open) setNote(null); }}><DialogContent className="portfolio-dialog note-dialog">{note !== null && <><span className="eyebrow">{notes[note].category} / FIELD NOTE</span><DialogTitle>{notes[note].title}</DialogTitle><DialogDescription>{notes[note].takeaway}</DialogDescription>{notes[note].body.map(p => <p key={p}>{p}</p>)}<div className="note-end"><ShieldCheck size={19} /> Explore these ideas only in environments you own or have permission to assess.</div></>}</DialogContent></Dialog>
-    <Dialog open={terminalOpen} onOpenChange={setTerminalOpen}><DialogContent className="portfolio-dialog terminal-dialog"><DialogTitle>TusharOS / Interactive shell</DialogTitle><DialogDescription>Explore files and Linux-style commands. Type help or man ls.</DialogDescription><PortfolioTerminal expanded onNavigate={id=>{setTerminalOpen(false);setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:motion?'smooth':'auto'}),120);}} /></DialogContent></Dialog>
-  </>;
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  TerminalSquare,
+  Command as CommandIcon,
+  Settings2,
+  Volume2,
+  VolumeX,
+  LockKeyhole,
+  ChevronRight,
+  Search,
+  LayoutDashboard,
+  Keyboard,
+  ShieldCheck,
+  FolderLock,
+  Network,
+  Activity,
+  Wifi,
+  Menu,
+  X,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandItem,
+  CommandGroup,
+} from "@/components/ui/command";
+import { apps, appById } from "./os/catalog";
+import type { AppId, Preferences } from "./os/catalog";
+import AppWindow from "./os/Window";
+import type { WindowState } from "./os/Window";
+import Effects from "./os/Effects";
+import { SystemMonitor } from "./os/SystemMonitor";
+import avatar from "@/assets/avatar.webp";
+import "./os/os.css";
+const Terminal = lazy(() => import("./components/PortfolioTerminal"));
+const About = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.About })),
+  ),
+  Projects = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Projects })),
+  ),
+  Skills = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Skills })),
+  ),
+  CTF = lazy(() => import("./os/Modules").then((m) => ({ default: m.CTF }))),
+  NetworkMap = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.NetworkMap })),
+  ),
+  GithubPanel = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.GithubPanel })),
+  ),
+  Credentials = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Credentials })),
+  ),
+  Experience = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Experience })),
+  ),
+  Notes = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Notes })),
+  ),
+  Resume = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Resume })),
+  ),
+  Contact = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Contact })),
+  ),
+  Settings = lazy(() =>
+    import("./os/Modules").then((m) => ({ default: m.Settings })),
+  );
+function readPrefs(): Preferences {
+  try {
+    const p = JSON.parse(localStorage.getItem("tushar-os-prefs") || "{}");
+    return {
+      motion:
+        !matchMedia("(prefers-reduced-motion: reduce)").matches &&
+        p.motion !== false,
+      sound: false,
+      matrix: p.matrix === true,
+      crt: p.crt === true,
+      hacker: false,
+    };
+  } catch {
+    return {
+      motion: false,
+      sound: false,
+      matrix: false,
+      crt: false,
+      hacker: false,
+    };
+  }
 }
-export default App;
+function Boot({ done, motion }: { done: () => void; motion: boolean }) {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    if (!motion) {
+      done();
+      return;
+    }
+    const started = performance.now();
+    const t = setInterval(() => {
+      const p = Math.min(100, Math.round((performance.now() - started) / 23));
+      setProgress(p);
+      if (p === 100) {
+        clearInterval(t);
+        done();
+      }
+    }, 80);
+    return () => clearInterval(t);
+  }, [done, motion]);
+  return (
+    <div
+      className="boot-screen"
+      role="dialog"
+      aria-modal="true"
+      aria-label="TusharOS startup"
+    >
+      <div className="boot-mark">
+        <TerminalSquare size={44} />
+      </div>
+      <p>
+        TUSHAR_OS <span>v3.7</span>
+      </p>
+      <h1>Initializing your session.</h1>
+      <div
+        className="boot-progress"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <span style={{ width: progress + "%" }} />
+      </div>
+      <div className="boot-lines">
+        {[
+          "Loading interface kernel",
+          "Mounting /portfolio",
+          "Preparing command shell",
+          "Opening learning modules",
+        ].map((s, i) => (
+          <div key={s}>
+            <span>{s}</span>
+            <b>{progress > i * 25 ? "OK" : "…"}</b>
+          </div>
+        ))}
+      </div>
+      <span className="boot-sub">
+        Portfolio interface / no authentication required
+      </span>
+      <button autoFocus className="os-button" onClick={done}>
+        Skip boot
+      </button>
+    </div>
+  );
+}
+export default function App() {
+  const [prefs, setPreferences] = useState<Preferences>(readPrefs),
+    [windows, setWindows] = useState<WindowState[]>([]),
+    [palette, setPalette] = useState(false),
+    [mobileMenu, setMobileMenu] = useState(false),
+    [bounds, setBounds] = useState({ w: 1000, h: 700 }),
+    [clock, setClock] = useState(new Date()),
+    [boot, setBoot] = useState(() => {
+      try {
+        return !localStorage.getItem("tushar-os-booted");
+      } catch {
+        return true;
+      }
+    });
+  const workspace = useRef<HTMLDivElement>(null),
+    z = useRef(10),
+    audio = useRef<AudioContext | null>(null);
+  const active = windows
+    .filter((w) => !w.minimized && !w.closing)
+    .sort((a, b) => b.z - a.z)[0]?.id;
+  const finishBoot = useCallback(() => {
+    setBoot(false);
+    try {
+      localStorage.setItem("tushar-os-booted", "1");
+    } catch {}
+  }, []);
+  const setPrefs = useCallback(
+    (p: Partial<Preferences>) => setPreferences((old) => ({ ...old, ...p })),
+    [],
+  );
+  useEffect(() => {
+    document.documentElement.dataset.motion = prefs.motion ? "on" : "off";
+    document.documentElement.dataset.hacker = prefs.hacker ? "on" : "off";
+    try {
+      localStorage.setItem(
+        "tushar-os-prefs",
+        JSON.stringify({ ...prefs, sound: false, hacker: false }),
+      );
+    } catch {}
+  }, [prefs]);
+  useEffect(() => {
+    const media = matchMedia("(prefers-reduced-motion: reduce)");
+    const changed = () => {
+      if (media.matches) setPrefs({ motion: false });
+    };
+    media.addEventListener("change", changed);
+    return () => media.removeEventListener("change", changed);
+  }, [setPrefs]);
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (!document.hidden) setClock(new Date());
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const el = workspace.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width,
+        h = entry.contentRect.height;
+      setBounds({ w, h });
+      setWindows((old) =>
+        old.map((win) => ({
+          ...win,
+          w: Math.min(win.w, w),
+          h: Math.min(win.h, h),
+          x: Math.max(0, Math.min(win.x, w - Math.min(win.w, w))),
+          y: Math.max(0, Math.min(win.y, h - Math.min(win.h, h))),
+        })),
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const beep = useCallback(() => {
+    if (!prefs.sound) return;
+    try {
+      const ctx = audio.current ?? new AudioContext();
+      audio.current = ctx;
+      if (ctx.state === "suspended") void ctx.resume();
+      const oscillator = ctx.createOscillator(),
+        gain = ctx.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(680, ctx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        420,
+        ctx.currentTime + 0.055,
+      );
+      gain.gain.setValueAtTime(0.025, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.08);
+    } catch {}
+  }, [prefs.sound]);
+  useEffect(
+    () => () => {
+      void audio.current?.close();
+    },
+    [],
+  );
+  const open = useCallback(
+    (id: AppId) => {
+      beep();
+      setMobileMenu(false);
+      setPalette(false);
+      setWindows((old) => {
+        const found = old.find((w) => w.id === id);
+        if (found)
+          return old.map((w) =>
+            w.id === id
+              ? { ...w, minimized: false, closing: false, z: ++z.current }
+              : w,
+          );
+        const w = Math.min(860, bounds.w - 30),
+          h = Math.min(660, bounds.h - 30),
+          offset = (old.length % 4) * 20;
+        return [
+          ...old,
+          {
+            id,
+            x: Math.max(0, Math.min(bounds.w - w, (bounds.w - w) / 2 + offset)),
+            y: Math.max(0, Math.min(bounds.h - h, 20 + offset)),
+            w,
+            h,
+            z: ++z.current,
+            minimized: false,
+            maximized: bounds.w < 750,
+          },
+        ];
+      });
+    },
+    [bounds, beep],
+  );
+  const close = useCallback(
+    (id: AppId) => {
+      beep();
+      setWindows((old) =>
+        old.map((w) => (w.id === id ? { ...w, closing: true } : w)),
+      );
+      setTimeout(
+        () => {
+          setWindows((old) => old.filter((w) => w.id !== id || !w.closing));
+          document
+            .querySelector<HTMLButtonElement>(`[data-launch="${id}"]`)
+            ?.focus({ preventScroll: true });
+        },
+        prefs.motion ? 130 : 0,
+      );
+    },
+    [beep, prefs.motion],
+  );
+  const update = (id: AppId, p: Partial<WindowState>) =>
+    setWindows((old) => old.map((w) => (w.id === id ? { ...w, ...p } : w)));
+  const focus = (id: AppId) =>
+    setWindows((old) => {
+      if (
+        old.filter((w) => !w.minimized).sort((a, b) => b.z - a.z)[0]?.id === id
+      )
+        return old;
+      return old.map((w) => (w.id === id ? { ...w, z: ++z.current } : w));
+    });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((p) => !p);
+      } else if (e.ctrlKey && e.key === "`") {
+        e.preventDefault();
+        open("terminal");
+      } else if (e.key === "Escape" && !palette && !boot) {
+        if (mobileMenu) setMobileMenu(false);
+        else if (active) close(active);
+      } else if (e.altKey && ["1", "2", "3", "4", "5"].includes(e.key)) {
+        e.preventDefault();
+        open(
+          (["about", "skills", "projects", "ctf", "contact"] as AppId[])[
+            Number(e.key) - 1
+          ],
+        );
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close, active, palette, boot, mobileMenu]);
+  const terminalNavigate = (id: string) => {
+    const aliases: Record<string, AppId> = {
+      work: "projects",
+      expertise: "skills",
+      journey: "experience",
+      services: "contact",
+      home: "about",
+      process: "experience",
+    };
+    const next = aliases[id] ?? id;
+    if (apps.some((a) => a.id === next)) open(next as AppId);
+  };
+  const terminalEffect = (effect: string) => {
+    if (effect === "matrix-on") setPrefs({ matrix: true });
+    if (effect === "matrix-off") setPrefs({ matrix: false });
+    if (effect === "hack") {
+      setPrefs({ hacker: true, matrix: true });
+      update("terminal", { maximized: true });
+    }
+    if (effect === "normal") setPrefs({ hacker: false, matrix: false });
+    if (effect === "exit") close("terminal");
+  };
+  const time = clock.toLocaleTimeString("en-GB", {
+    timeZone: "Asia/Kathmandu",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  function render(id: AppId) {
+    switch (id) {
+      case "about":
+        return <About open={open} />;
+      case "terminal":
+        return (
+          <Terminal
+            expanded
+            onNavigate={terminalNavigate}
+            onEffect={terminalEffect}
+            onType={beep}
+          />
+        );
+      case "projects":
+        return <Projects />;
+      case "skills":
+        return <Skills />;
+      case "ctf":
+        return <CTF />;
+      case "network":
+        return <NetworkMap open={open} />;
+      case "github":
+        return <GithubPanel />;
+      case "certificates":
+        return <Credentials />;
+      case "experience":
+        return <Experience />;
+      case "notes":
+        return <Notes />;
+      case "resume":
+        return <Resume />;
+      case "contact":
+        return <Contact />;
+      case "settings":
+        return (
+          <Settings
+            prefs={prefs}
+            setPrefs={setPrefs}
+            reboot={() => {
+              setBoot(true);
+            }}
+          />
+        );
+      case "system":
+        return <SystemMonitor motion={prefs.motion} />;
+    }
+  }
+  return (
+    <div
+      className={
+        "os-shell " +
+        (prefs.crt ? "crt-mode " : "") +
+        (prefs.hacker ? "hacker-mode" : "")
+      }
+    >
+      <Effects prefs={prefs} />
+      <a className="os-skip" href="#desktop-main">
+        Skip to dashboard
+      </a>
+      <header className="os-topbar" inert={boot}>
+        <div className="topbar-brand">
+          <button
+            className="mobile-nav-toggle"
+            aria-label="Toggle app navigation"
+            aria-expanded={mobileMenu}
+            onClick={() => setMobileMenu(!mobileMenu)}
+          >
+            {mobileMenu ? <X size={19} /> : <Menu size={19} />}
+          </button>
+          <TerminalSquare size={22} />
+          <strong>
+            TUSHAR<span>_OS</span>
+          </strong>
+          <span className="version">v3.7</span>
+        </div>
+        <div className="topbar-status">
+          <span className="status-light" />
+          <span>PORTFOLIO SESSION</span>
+          <span className="top-separator" />
+          <LockKeyhole size={12} />
+          <span>
+            {location.protocol === "https:" ? "HTTPS" : "LOCAL PREVIEW"}
+          </span>
+        </div>
+        <button className="palette-trigger" onClick={() => setPalette(true)}>
+          <Search size={14} />
+          <span>Search anything</span>
+          <kbd>⌘ K</kbd>
+        </button>
+        <div className="topbar-right">
+          <span className="top-time">
+            {time}
+            <small>NPT</small>
+          </span>
+          <button
+            aria-label={prefs.sound ? "Mute sound" : "Enable sound"}
+            aria-pressed={prefs.sound}
+            onClick={() => setPrefs({ sound: !prefs.sound })}
+          >
+            {prefs.sound ? <Volume2 size={17} /> : <VolumeX size={17} />}
+          </button>
+          <button
+            aria-label="Open preferences"
+            onClick={() => open("settings")}
+          >
+            <Settings2 size={17} />
+          </button>
+        </div>
+      </header>
+      <div className="os-body" inert={boot}>
+        <aside className={"os-sidebar " + (mobileMenu ? "menu-visible" : "")}>
+          <div className="operator-label">OPERATOR / 001</div>
+          <button
+            aria-label="Command center"
+            className={"sidebar-home " + (!active ? "selected" : "")}
+            onClick={() => {
+              setWindows((old) => old.map((w) => ({ ...w, minimized: true })));
+              setMobileMenu(false);
+            }}
+          >
+            <LayoutDashboard size={17} />
+            <span>Command center</span>
+          </button>
+          <div className="sidebar-section-label">WORKSPACE</div>
+          <nav aria-label="Portfolio applications">
+            {apps
+              .filter((a) => !["system", "settings"].includes(a.id))
+              .map((a) => (
+                <button
+                  key={a.id}
+                  aria-label={a.name}
+                  data-launch={a.id}
+                  className={active === a.id ? "selected" : ""}
+                  onClick={() => open(a.id)}
+                  aria-current={active === a.id ? "page" : undefined}
+                >
+                  <a.icon size={17} />
+                  <span>{a.name}</span>
+                  {windows.some((w) => w.id === a.id) && <i />}
+                </button>
+              ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="operator-avatar">TP</div>
+            <div>
+              <strong>Tushar Pradhan</strong>
+              <span>Ethical hacking student</span>
+            </div>
+            <span className="status-light" />
+          </div>
+        </aside>
+        <main
+          id="desktop-main"
+          tabIndex={-1}
+          className="os-workspace"
+          ref={workspace}
+        >
+          <div className="desktop-home">
+            <div className="desktop-breadcrumb">
+              <span>workspace</span>
+              <ChevronRight size={13} />
+              <b>command-center</b>
+              <span className="desktop-session">SESSION / PUBLIC</span>
+            </div>
+            <div className="dashboard-heading">
+              <div>
+                <p className="os-eyebrow">YOUR CONNECTION TO MY WORLD</p>
+                <h2>
+                  Welcome to the command center<span>.</span>
+                </h2>
+              </div>
+              <span className="mode-tag">EXPLORE MODE</span>
+            </div>
+            <section className="desktop-hero">
+              <div className="hero-intro">
+                <div className="terminal-prompt">
+                  <span>tushar@cyberlab</span>:~$ whoami <i />
+                </div>
+                <h1>
+                  TUSHAR
+                  <br />
+                  <span>PRADHAN</span>
+                  <b>_</b>
+                </h1>
+                <div className="role-line">ETHICAL HACKING STUDENT</div>
+                <p>
+                  Breaking systems to understand
+                  <br className="desktop-break" /> how to defend them.
+                </p>
+                <div className="hero-os-actions">
+                  <button
+                    className="os-button primary"
+                    data-cursor="EXECUTE"
+                    onClick={() => open("terminal")}
+                  >
+                    <TerminalSquare size={16} /> Enter terminal
+                  </button>
+                  <button
+                    className="os-button"
+                    onClick={() => open("projects")}
+                  >
+                    <FolderLock size={16} /> Project vault
+                  </button>
+                </div>
+                <div className="hero-coordinate">
+                  <span>NEPAL / UTC +05:45</span>
+                  <span>CURIOUS BY DEFAULT. ETHICAL BY DESIGN.</span>
+                </div>
+              </div>
+              <div className="hero-id-card" data-tilt>
+                <img
+                  src={avatar}
+                  alt="Purple-lit hooded character illustration"
+                  fetchPriority="high"
+                />
+                <div className="hero-id-shade" />
+                <div className="hero-id-top">
+                  <span>IDENTITY / 001</span>
+                  <ShieldCheck size={19} />
+                </div>
+                <div className="hero-id-bottom">
+                  <small>THE PERSON BEHIND THE PROMPT</small>
+                  <strong>TUSHAR.PRADHAN</strong>
+                  <span>SECURITY × DEVELOPMENT</span>
+                </div>
+                <div className="portrait-reticle" aria-hidden="true" />
+              </div>
+            </section>
+            <div className="module-strip-heading">
+              <span>QUICK ACCESS</span>
+              <span>SELECT A MODULE TO BEGIN</span>
+            </div>
+            <div className="desktop-modules">
+              {(["projects", "skills", "ctf", "network"] as AppId[]).map(
+                (id, i) => {
+                  const a = appById(id);
+                  return (
+                    <button
+                      key={id}
+                      data-tilt
+                      data-cursor="OPEN"
+                      onClick={() => open(id)}
+                    >
+                      <div>
+                        <a.icon size={22} />
+                        <span>0{i + 1}</span>
+                      </div>
+                      <h3>{a.name}</h3>
+                      <p>{a.description}</p>
+                      <footer>
+                        Launch module <span>+</span>
+                      </footer>
+                    </button>
+                  );
+                },
+              )}
+            </div>
+            <div className="desktop-tip">
+              <Keyboard size={15} />
+              <span>Navigate at the speed of thought.</span>
+              <button onClick={() => setPalette(true)}>
+                <kbd>Ctrl + K</kbd> command palette
+              </button>
+              <button onClick={() => open("settings")}>All shortcuts</button>
+            </div>
+          </div>
+          {windows.map((win) => (
+            <AppWindow
+              key={win.id}
+              win={win}
+              active={active === win.id}
+              bounds={bounds}
+              update={(p) => update(win.id, p)}
+              focus={() => focus(win.id)}
+              close={() => close(win.id)}
+            >
+              <Suspense
+                fallback={
+                  <div className="module-loading">
+                    <Activity size={24} />
+                    <span>Loading module…</span>
+                  </div>
+                }
+              >
+                {render(win.id)}
+              </Suspense>
+            </AppWindow>
+          ))}
+        </main>
+        <aside className="system-rail">
+          <SystemMonitor compact motion={prefs.motion} />
+          <div className="rail-section">
+            <div className="monitor-label">
+              <span>SESSION INFO</span>
+              <LockKeyhole size={13} />
+            </div>
+            <p>
+              ACCESS LEVEL<strong>PUBLIC PORTFOLIO</strong>
+            </p>
+            <p>
+              LOCATION<strong>NEPAL / NPT</strong>
+            </p>
+            <p>
+              ENVIRONMENT<strong>BROWSER SANDBOX</strong>
+            </p>
+          </div>
+          <button className="rail-map" onClick={() => open("network")}>
+            <Network size={30} />
+            <strong>Explore the network</strong>
+            <span>Open learning topology +</span>
+          </button>
+          <div className="rail-bottom">
+            <ShieldCheck size={15} />
+            <span>
+              Permission first.
+              <br />
+              Always.
+            </span>
+          </div>
+        </aside>
+      </div>
+      <footer className="os-taskbar" inert={boot}>
+        <button
+          className="taskbar-launcher"
+          aria-label="Open command palette"
+          onClick={() => setPalette(true)}
+        >
+          <CommandIcon size={20} />
+        </button>
+        <span className="taskbar-divider" />
+        <div className="taskbar-apps">
+          {(
+            [
+              "terminal",
+              "projects",
+              "skills",
+              "ctf",
+              ...windows
+                .map((w) => w.id)
+                .filter(
+                  (id) =>
+                    !["terminal", "projects", "skills", "ctf"].includes(id),
+                ),
+            ] as AppId[]
+          ).map((id) => {
+            const a = appById(id),
+              win = windows.find((w) => w.id === id);
+            return (
+              <button
+                key={id}
+                className={
+                  (win ? "running " : "") + (active === id ? "active" : "")
+                }
+                aria-label={
+                  (win?.minimized
+                    ? "Restore "
+                    : active === id
+                      ? "Minimize "
+                      : "Open ") + a.name
+                }
+                onClick={() => {
+                  if (active === id) update(id, { minimized: true });
+                  else open(id);
+                }}
+              >
+                <a.icon size={17} />
+                <span>{a.name}</span>
+                {win && <i />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="taskbar-tray">
+          <Wifi size={14} />
+          <span>{time}</span>
+          <button
+            aria-label="Minimize all windows"
+            onClick={() =>
+              setWindows((old) => old.map((w) => ({ ...w, minimized: true })))
+            }
+          >
+            <LayoutDashboard size={16} />
+          </button>
+        </div>
+      </footer>
+      <Dialog open={palette} onOpenChange={setPalette}>
+        <DialogContent className="os-command-dialog">
+          <DialogTitle className="sr-only">Command palette</DialogTitle>
+          <DialogDescription className="sr-only">
+            Search and open a portfolio module. Use arrow keys and Enter to
+            select.
+          </DialogDescription>
+          <Command>
+            <CommandInput placeholder="Where do you want to go?" />
+            <CommandList>
+              <CommandEmpty>No matching modules.</CommandEmpty>
+              <CommandGroup heading="APPLICATIONS">
+                {apps.map((a) => (
+                  <CommandItem
+                    key={a.id}
+                    value={a.name + " " + a.label + " " + a.description}
+                    onSelect={() => open(a.id)}
+                  >
+                    <a.icon size={18} />
+                    <div>
+                      <strong>Open {a.name}</strong>
+                      <span>{a.path}</span>
+                    </div>
+                    <kbd>↵</kbd>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+            <div className="command-footer">
+              <span>↑↓ navigate</span>
+              <span>↵ open</span>
+              <span>esc dismiss</span>
+            </div>
+          </Command>
+        </DialogContent>
+      </Dialog>
+      {boot && <Boot done={finishBoot} motion={prefs.motion} />}
+    </div>
+  );
+}

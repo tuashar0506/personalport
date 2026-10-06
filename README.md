@@ -1,56 +1,39 @@
-# Tushar Pradhan — Cybersecurity Portfolio
+# TUSHAR_OS — Tushar Pradhan
 
-A responsive, cinematic purple and magenta cyberpunk portfolio, rebuilt from the supplied React project.
+Purple cyberpunk portfolio desktop for an ethical hacking and cybersecurity student. React, TypeScript, Vite, and Tailwind.
 
-## Develop
+## Run and build
 
-Use Node.js 22 or newer.
+Use Node.js 22 or newer. Run `npm ci`, then `npm run dev`. Run `npm run build` to generate `dist/`.
 
-```sh
-npm ci
-npm run dev
-```
+Cloudflare Pages uses the `main` branch, build command `npm run build`, and output directory `dist`. The site assumes hosting at the root of tusharpradhan.com.np.
 
-## Build
+## Interface
 
-```sh
-npm run build
-```
+- Skippable boot screen, remembered locally.
+- Draggable, resizable, minimizable desktop windows; fullscreen modules on mobile.
+- Identity, project vault, arsenal, CTF notes, interactive learning map, GitHub, credentials, journey, notes, résumé, contact, and preferences.
+- Ctrl/Cmd+K command palette; Ctrl+backtick terminal; Escape closes the focused window.
+- Linux-style browser terminal with virtual files, pipes, manuals, history, autocomplete, transcript export, and visual modes. It does not run a real shell or send scans.
+- Optional sound, matrix, and CRT effects. Sound starts off. Reduced-motion support and keyboard controls are included.
+- Telemetry is explicitly simulated. GitHub data comes from public API requests and has a labeled fallback.
+- Contact prepares an email draft for the visitor to review and send. No backend message delivery or tracking.
 
-The static production output is in `dist/`. Deploy that directory to any static hosting provider. The default base is `/`; for a GitHub Pages project path use `npm run build -- --base=/personalport/`.
+## Content
 
-## Personalize
+- `src/data/portfolio.ts`: supplied personal information and projects.
+- `src/data/credentials.ts`: clean learning-profile URLs and verified certificate details.
+- `src/os/Modules.tsx`: module content and behavior.
+- `src/os/catalog.ts`: app navigation and learning-tool groups.
+- `src/os/Window.tsx`: desktop window controls.
+- `src/os/os.css`: layout and appearance.
+- `src/os/Effects.tsx`: cursor and ambient effects.
+- `src/lib/terminal-engine.ts`: command parser and virtual filesystem.
+- `public/resume.html`: printable profile; keep synchronized with profile data.
+- `index.html`: metadata and structured profile links.
 
-- `src/data/portfolio.ts`: name, email, GitHub, original projects, skills, tools.
-- `src/App.tsx`: services, project overviews, field notes, education, FAQ, terminal commands, and contact flow.
-- `src/App.css` and `src/Hacker.css`: visual styling, responsive layouts, pointer-reactive surfaces.
-- `src/components/HackerEffects.tsx`: matrix background and mouse spotlight, honoring reduced motion.
-- `src/components/PortfolioTerminal.tsx`: interactive terminal UI.
-- `src/lib/terminal-engine.ts`: read-only virtual filesystem, command parser, manuals, and completion.
-- `src/assets/avatar.jpg`: original supplied character artwork.
-- `index.html`: page title and metadata.
-
-Project claims are retained from the supplied portfolio. Service copy, field notes, and collaboration process were drafted for this redesign. No certifications, testimonials, client results, or CTF achievements were invented.
-
-## Features and behavior
-
-- Responsive navigation and selected-section indicators.
-- Category filters and accessible project detail dialogs.
-- Local portfolio terminal with `help`, `whoami`, `skills`, `projects`, `contact`, `ethics`, `clear`, and `open work/about/contact` commands. It never executes shell commands.
-- Read-only GitHub repository retrieval, with a labeled fallback to supplied project links when unavailable. No invented activity statistics.
-- Three educational field notes in accessible reading dialogs.
-- Project inquiry form prepares a `mailto:` draft; no message is automatically sent and no inquiry is stored by the site. Copy and plain-text download are also available.
-- Motion preference is stored locally, with operating-system reduced-motion support.
-- No visitor tracking or analytics.
+The supplied TryHackMe PDFs show Cyber Security 101 (14 May 2025, TUSHAR PRADHAN) and Pre Security (7 May 2025, recipient displayed as UnKnown). Original names and issuer links are preserved. No platform rank, badge, or CTF result is inferred from a profile URL.
 
 ## Validation
 
-Production TypeScript and Vite build passed. Server rendering, all internal anchor targets, all four project cards, primary controls, and built asset paths were checked. A browser visual pass was unavailable in the build environment; verify responsive layout and email-app behavior on your target devices before public release.
-
-## Version 3 update
-
-Email: hello@tusharpradhan.com.np. Added a dedicated terminal section, Linux-style file navigation and text filters, simple pipes, manuals, history recall, Tab completion, and keyboard shortcuts. Network examples are explicitly labeled static simulations. Cursor spotlight and pointer-reactive card tilt are limited to fine pointers and disabled with reduced motion. Production build, server rendering, anchor navigation, and 21 command behavior checks passed; browser visual QA remains unavailable.
-
-## Purple cyberpunk edition
-
-Unified violet surfaces, magenta accents, purple matrix rain, pointer spotlights, and terminal defaults. Added reading progress and downloadable terminal transcripts. Email remains hello@tusharpradhan.com.np. No real shell commands or network scans are executed.
+Production TypeScript/Vite build and 13 terminal behavior checks passed. Chromium checks covered desktop, tablet, and mobile layouts, certificate cards, terminal output, window drag/resize/maximize/minimize/restore, keyboard closing, command palette, module rendering, reduced motion, and horizontal overflow. No JavaScript page errors were observed.

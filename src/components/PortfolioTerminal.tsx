@@ -1,18 +1,235 @@
-import { useEffect, useRef, useState } from 'react';
-import { Download, Maximize2, TerminalSquare } from 'lucide-react';
-import { complete, execute, HOME, initialSession } from '@/lib/terminal-engine';
-import type { Session } from '@/lib/terminal-engine';
-type Entry={command:string;output:string;cwd:string};
-export default function PortfolioTerminal({expanded=false,onExpand,onNavigate}:{expanded?:boolean;onExpand?:()=>void;onNavigate?:(id:string)=>void}) {
-  const [input,setInput]=useState('');const [session,setSession]=useState<Session>(initialSession);const [entries,setEntries]=useState<Entry[]>([{command:'neofetch',output:execute('neofetch',initialSession()).output,cwd:HOME}]);const [theme,setTheme]=useState('violet');const [historyIndex,setHistoryIndex]=useState(-1);const [savedInput,setSavedInput]=useState('');const output=useRef<HTMLDivElement>(null);const field=useRef<HTMLInputElement>(null);const id=expanded?'full':'inline';
-  useEffect(()=>{if(output.current)output.current.scrollTop=output.current.scrollHeight;},[entries]);
-  function run(raw:string){if(!raw.trim())return;const next={...session,history:[...session.history,raw].slice(-100)};const result=execute(raw,next);setInput('');setHistoryIndex(-1);if(result.clear)setEntries([]);else setEntries(e=>[...e.slice(-59),{command:raw,output:result.output,cwd:session.cwd}]);if(result.cwd){next.previous=session.cwd;next.cwd=result.cwd;}setSession(next);if(result.theme)setTheme(result.theme);if(result.section){if(onNavigate)onNavigate(result.section);else document.getElementById(result.section)?.scrollIntoView({behavior:document.documentElement.dataset.motion==='off'?'auto':'smooth'});}field.current?.focus({preventScroll:true});}
-  function exportSession(){const text=entries.map(e=>`guest@tushar:${e.cwd} $ ${e.command}\n${e.output}`).join('\n\n');const url=URL.createObjectURL(new Blob(['TusharOS — browser simulation transcript\n\n'+text],{type:'text/plain'}));const link=document.createElement('a');link.href=url;link.download='tushar-terminal-session.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-  return <div className={'terminal hacker-terminal '+(expanded?'terminal-expanded':'')} data-terminal-theme={theme}>
-    <div className="terminal-bar"><div className="window-dots"><i/><i/><i/></div><span><TerminalSquare size={14}/> guest@tushar : {session.cwd.replace(HOME,'~')}</span>{onExpand?<button onClick={onExpand} aria-label="Expand terminal"><Maximize2 size={16}/></button>:<span>v3.0</span>}</div>
-    <div className="shell-banner"><span>LINUX-STYLE PORTFOLIO SANDBOX</span><span>READ ONLY</span></div>
-    <div className="terminal-output" ref={output} role="log" aria-live="polite" aria-label="Terminal output" tabIndex={0}>{entries.map((entry,i)=><div className="terminal-line" key={i}><p><span>guest@tushar</span> <b>{entry.cwd.replace(HOME,'~')} $</b> {entry.command}</p>{entry.output&&<pre>{entry.output}</pre>}</div>)}</div>
-    <form className="terminal-input" onSubmit={e=>{e.preventDefault();run(input);}}><span aria-hidden="true">❯</span><label className="sr-only" htmlFor={'shell-'+id}>Terminal command</label><input ref={field} id={'shell-'+id} value={input} maxLength={1000} onChange={e=>{setInput(e.target.value);setHistoryIndex(-1);}} onKeyDown={e=>{if(e.key==='ArrowUp'){e.preventDefault();if(!session.history.length)return;if(historyIndex<0)setSavedInput(input);const next=historyIndex<0?session.history.length-1:Math.max(0,historyIndex-1);setHistoryIndex(next);setInput(session.history[next]);}else if(e.key==='ArrowDown'){e.preventDefault();if(historyIndex<0)return;const next=historyIndex+1;if(next>=session.history.length){setHistoryIndex(-1);setInput(savedInput);}else{setHistoryIndex(next);setInput(session.history[next]);}}else if(e.key==='Tab'&&!e.shiftKey){const matches=complete(input,session.cwd);if(matches.length){e.preventDefault();if(matches.length===1)setInput(matches[0]);else setEntries(old=>[...old.slice(-59),{command:input+' [Tab]',output:matches.map(m=>m.trim()).join('  '),cwd:session.cwd}]);}}else if(e.ctrlKey&&e.key==='l'){e.preventDefault();setEntries([]);}else if(e.ctrlKey&&e.key==='c'&&!window.getSelection()?.toString()){e.preventDefault();setEntries(old=>[...old.slice(-59),{command:input+' ^C',output:'',cwd:session.cwd}]);setInput('');setHistoryIndex(-1);}}} autoComplete="off" spellCheck={false} aria-describedby={'shell-hints-'+id} placeholder="Type a command…"/><button type="submit" aria-label="Run terminal command">Run</button></form>
-    <div className="terminal-shortcuts">{['help','ls -la','cat about.txt','tree','nmap --demo'].map(c=><button key={c} onClick={()=>run(c)}>{c}</button>)}</div><div className="shell-hints" id={'shell-hints-'+id}><span>Tab complete · ↑↓ history · Ctrl+L clear</span><span>Shift+Tab to leave input</span></div><div className="terminal-export"><span>Explore. Experiment. Keep your notes.</span><button onClick={exportSession}><Download size={14}/> Save session</button></div>
-  </div>;
+import { useEffect, useRef, useState } from "react";
+import { Download, Maximize2, TerminalSquare } from "lucide-react";
+import { complete, execute, HOME, initialSession } from "@/lib/terminal-engine";
+import type { Session } from "@/lib/terminal-engine";
+type Entry = { command: string; output: string; cwd: string };
+export default function PortfolioTerminal({
+  expanded = false,
+  onExpand,
+  onNavigate,
+  onEffect,
+  onType,
+}: {
+  expanded?: boolean;
+  onExpand?: () => void;
+  onNavigate?: (id: string) => void;
+  onEffect?: (effect: string) => void;
+  onType?: () => void;
+}) {
+  const [input, setInput] = useState("");
+  const [session, setSession] = useState<Session>(initialSession);
+  const [entries, setEntries] = useState<Entry[]>([
+    {
+      command: "neofetch",
+      output: execute("neofetch", initialSession()).output,
+      cwd: HOME,
+    },
+  ]);
+  const [theme, setTheme] = useState("violet");
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [savedInput, setSavedInput] = useState("");
+  const output = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLInputElement>(null);
+  const id = expanded ? "full" : "inline";
+  useEffect(() => {
+    if (output.current) output.current.scrollTop = output.current.scrollHeight;
+  }, [entries]);
+  function run(raw: string) {
+    if (!raw.trim()) return;
+    const next = { ...session, history: [...session.history, raw].slice(-100) };
+    const result = execute(raw, next);
+    setInput("");
+    setHistoryIndex(-1);
+    if (result.clear) setEntries([]);
+    else
+      setEntries((e) => [
+        ...e.slice(-59),
+        { command: raw, output: result.output, cwd: session.cwd },
+      ]);
+    if (result.cwd) {
+      next.previous = session.cwd;
+      next.cwd = result.cwd;
+    }
+    setSession(next);
+    if (result.theme) setTheme(result.theme);
+    if (result.effect) onEffect?.(result.effect);
+    if (result.section) {
+      if (onNavigate) onNavigate(result.section);
+      else
+        document
+          .getElementById(result.section)
+          ?.scrollIntoView({
+            behavior:
+              document.documentElement.dataset.motion === "off"
+                ? "auto"
+                : "smooth",
+          });
+    }
+    field.current?.focus({ preventScroll: true });
+  }
+  function exportSession() {
+    const text = entries
+      .map((e) => `tushar@cyberlab:${e.cwd} $ ${e.command}\n${e.output}`)
+      .join("\n\n");
+    const url = URL.createObjectURL(
+      new Blob(["TusharOS — browser simulation transcript\n\n" + text], {
+        type: "text/plain",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "tushar-terminal-session.txt";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  return (
+    <div
+      className={
+        "terminal hacker-terminal " + (expanded ? "terminal-expanded" : "")
+      }
+      data-terminal-theme={theme}
+    >
+      <div className="terminal-bar">
+        <div className="window-dots">
+          <i />
+          <i />
+          <i />
+        </div>
+        <span>
+          <TerminalSquare size={14} /> tushar@cyberlab :{" "}
+          {session.cwd.replace(HOME, "~")}
+        </span>
+        {onExpand ? (
+          <button onClick={onExpand} aria-label="Expand terminal">
+            <Maximize2 size={16} />
+          </button>
+        ) : (
+          <span>v3.7</span>
+        )}
+      </div>
+      <div className="shell-banner">
+        <span>LINUX-STYLE PORTFOLIO SANDBOX</span>
+        <span>READ ONLY</span>
+      </div>
+      <div
+        className="terminal-output"
+        ref={output}
+        role="log"
+        aria-live="polite"
+        aria-label="Terminal output"
+        tabIndex={0}
+      >
+        {entries.map((entry, i) => (
+          <div className="terminal-line" key={i}>
+            <p>
+              <span>tushar@cyberlab</span>{" "}
+              <b>{entry.cwd.replace(HOME, "~")} $</b> {entry.command}
+            </p>
+            {entry.output && <pre>{entry.output}</pre>}
+          </div>
+        ))}
+      </div>
+      <form
+        className="terminal-input"
+        onSubmit={(e) => {
+          e.preventDefault();
+          run(input);
+        }}
+      >
+        <span aria-hidden="true">❯</span>
+        <label className="sr-only" htmlFor={"shell-" + id}>
+          Terminal command
+        </label>
+        <input
+          ref={field}
+          id={"shell-" + id}
+          value={input}
+          maxLength={1000}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setHistoryIndex(-1);
+            onType?.();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              if (!session.history.length) return;
+              if (historyIndex < 0) setSavedInput(input);
+              const next =
+                historyIndex < 0
+                  ? session.history.length - 1
+                  : Math.max(0, historyIndex - 1);
+              setHistoryIndex(next);
+              setInput(session.history[next]);
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              if (historyIndex < 0) return;
+              const next = historyIndex + 1;
+              if (next >= session.history.length) {
+                setHistoryIndex(-1);
+                setInput(savedInput);
+              } else {
+                setHistoryIndex(next);
+                setInput(session.history[next]);
+              }
+            } else if (e.key === "Tab" && !e.shiftKey) {
+              const matches = complete(input, session.cwd);
+              if (matches.length) {
+                e.preventDefault();
+                if (matches.length === 1) setInput(matches[0]);
+                else
+                  setEntries((old) => [
+                    ...old.slice(-59),
+                    {
+                      command: input + " [Tab]",
+                      output: matches.map((m) => m.trim()).join("  "),
+                      cwd: session.cwd,
+                    },
+                  ]);
+              }
+            } else if (e.ctrlKey && e.key === "l") {
+              e.preventDefault();
+              setEntries([]);
+            } else if (
+              e.ctrlKey &&
+              e.key === "c" &&
+              !window.getSelection()?.toString()
+            ) {
+              e.preventDefault();
+              setEntries((old) => [
+                ...old.slice(-59),
+                { command: input + " ^C", output: "", cwd: session.cwd },
+              ]);
+              setInput("");
+              setHistoryIndex(-1);
+            }
+          }}
+          autoComplete="off"
+          spellCheck={false}
+          aria-describedby={"shell-hints-" + id}
+          placeholder="Type a command…"
+        />
+        <button type="submit" aria-label="Run terminal command">
+          Run
+        </button>
+      </form>
+      <div className="terminal-shortcuts">
+        {["help", "ls -la", "cat about.txt", "tree", "nmap --demo"].map((c) => (
+          <button key={c} onClick={() => run(c)}>
+            {c}
+          </button>
+        ))}
+      </div>
+      <div className="shell-hints" id={"shell-hints-" + id}>
+        <span>Tab complete · ↑↓ history · Ctrl+L clear</span>
+        <span>Shift+Tab to leave input</span>
+      </div>
+      <div className="terminal-export">
+        <span>Explore. Experiment. Keep your notes.</span>
+        <button onClick={exportSession}>
+          <Download size={14} /> Save session
+        </button>
+      </div>
+    </div>
+  );
 }

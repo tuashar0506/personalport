@@ -1,0 +1,196 @@
+import {
+  UserRound,
+  TerminalSquare,
+  FolderLock,
+  Crosshair,
+  Network,
+  Github,
+  Mail,
+  ShieldCheck,
+  GraduationCap,
+  FileText,
+  Cpu,
+  Settings2,
+  BookOpen,
+} from "lucide-react";
+export const apps = [
+  {
+    id: "about",
+    name: "Identity",
+    label: "WHOAMI",
+    icon: UserRound,
+    path: "/home/tushar/identity",
+    description: "The person behind the prompt",
+  },
+  {
+    id: "terminal",
+    name: "Terminal",
+    label: "TERMINAL",
+    icon: TerminalSquare,
+    path: "/dev/terminal",
+    description: "Explore with Linux-style commands",
+  },
+  {
+    id: "projects",
+    name: "Project vault",
+    label: "PROJECTS",
+    icon: FolderLock,
+    path: "/classified/projects",
+    description: "Security tools and development work",
+  },
+  {
+    id: "skills",
+    name: "Cyber arsenal",
+    label: "ARSENAL",
+    icon: Crosshair,
+    path: "/usr/share/arsenal",
+    description: "Tools, technologies, and learning areas",
+  },
+  {
+    id: "ctf",
+    name: "CTF lab",
+    label: "CTF LAB",
+    icon: ShieldCheck,
+    path: "/labs/capture-the-flag",
+    description: "Forensics and challenge practice notes",
+  },
+  {
+    id: "network",
+    name: "Network lab",
+    label: "NETWORK",
+    icon: Network,
+    path: "/labs/topology",
+    description: "Explore the connected learning map",
+  },
+  {
+    id: "github",
+    name: "GitHub uplink",
+    label: "GITHUB",
+    icon: Github,
+    path: "/remote/github",
+    description: "Public repositories and recent activity",
+  },
+  {
+    id: "certificates",
+    name: "Credential vault",
+    label: "VAULT",
+    icon: ShieldCheck,
+    path: "/vault/certifications",
+    description: "Certificates and verification records",
+  },
+  {
+    id: "experience",
+    name: "Learning journey",
+    label: "JOURNEY",
+    icon: GraduationCap,
+    path: "/home/tushar/journey",
+    description: "Education and practical focus",
+  },
+  {
+    id: "notes",
+    name: "Field notes",
+    label: "NOTES",
+    icon: BookOpen,
+    path: "/home/tushar/notes",
+    description: "Short security explainers",
+  },
+  {
+    id: "resume",
+    name: "Résumé",
+    label: "RESUME",
+    icon: FileText,
+    path: "/home/tushar/resume",
+    description: "A printable student profile",
+  },
+  {
+    id: "contact",
+    name: "Contact channel",
+    label: "CONTACT",
+    icon: Mail,
+    path: "/network/contact",
+    description: "Start a project or collaboration",
+  },
+  {
+    id: "system",
+    name: "System monitor",
+    label: "SYSTEM",
+    icon: Cpu,
+    path: "/proc/portfolio",
+    description: "Demo telemetry and session information",
+  },
+  {
+    id: "settings",
+    name: "Preferences",
+    label: "SETTINGS",
+    icon: Settings2,
+    path: "/etc/preferences",
+    description: "Motion, sound, matrix, and CRT controls",
+  },
+] as const;
+export type AppId = (typeof apps)[number]["id"];
+export const appById = (id: AppId) => apps.find((a) => a.id === id)!;
+export type Preferences = {
+  motion: boolean;
+  sound: boolean;
+  matrix: boolean;
+  crt: boolean;
+  hacker: boolean;
+};
+export const arsenal = [
+  {
+    name: "Network security",
+    code: "NET",
+    items: [
+      "Cisco",
+      "Routing & switching",
+      "VLAN",
+      "OSPF",
+      "RIP",
+      "ACL",
+      "DHCP",
+      "STP",
+      "Packet Tracer",
+    ],
+  },
+  {
+    name: "Offensive security",
+    code: "SEC",
+    items: [
+      "Nmap",
+      "Burp Suite",
+      "Gobuster",
+      "Nikto",
+      "Metasploit",
+      "Hydra",
+      "SQLMap",
+    ],
+  },
+  {
+    name: "Digital forensics",
+    code: "DFIR",
+    items: [
+      "Wireshark",
+      "ExifTool",
+      "Binwalk",
+      "Steganography",
+      "PCAP analysis",
+    ],
+  },
+  {
+    name: "Systems",
+    code: "SYS",
+    items: ["Linux", "Ubuntu", "Bash", "Docker", "Hadoop"],
+  },
+  {
+    name: "Development",
+    code: "DEV",
+    items: [
+      "Python",
+      "JavaScript",
+      "HTML / CSS",
+      "SQL",
+      "Kotlin",
+      "Jetpack Compose",
+    ],
+  },
+];
